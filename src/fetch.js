@@ -1,23 +1,19 @@
 import axios from 'axios'
-import { isObject, startsWith, forEach } from 'lodash'
+import { isObject, startsWith, endsWith, forEach } from 'lodash'
 import pluralize from 'pluralize'
 
 module.exports = async ({
   apiURL,
   contentType,
-  singleType,
   jwtToken,
   queryLimit,
   reporter,
 }) => {
   // Define API endpoint.
-  let apiBase = singleType
-    ? `${apiURL}/${singleType}`
-    : `${apiURL}/${pluralize(contentType)}`
-
+  const apiBase = `${apiURL}/${pluralize(contentType)}`
   const apiEndpoint = `${apiBase}?_limit=${queryLimit}`
 
-  reporter.info(`Starting to fetch data from Strapi - ${apiEndpoint}`)
+  reporter.info(`Starting to fetch data from Strapi - ${apiBase}`)
 
   // Set authorization token
   let fetchRequestConfig = {}
@@ -30,13 +26,8 @@ module.exports = async ({
   // Make API request.
   const documents = await axios(apiEndpoint, fetchRequestConfig)
 
-  // Make sure response is an array for single type instances
-  const response = Array.isArray(documents.data)
-    ? documents.data
-    : [documents.data]
-
   // Map and clean data.
-  return response.map(item => clean(item))
+  return documents.data.map(item => clean(item))
 }
 
 /**
@@ -47,7 +38,10 @@ module.exports = async ({
  */
 const clean = item => {
   forEach(item, (value, key) => {
-    if (startsWith(key, `__`)) {
+    if (endsWith(key, `component`)) {
+      item.component = item[key]
+      delete item[key]
+    } else if (startsWith(key, `__`)) {
       delete item[key]
     } else if (startsWith(key, `_`)) {
       delete item[key]
